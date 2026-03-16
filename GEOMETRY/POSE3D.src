@@ -1,0 +1,254 @@
+&ACCESS RV1
+DEF POSE3D ( )
+
+END
+
+; ============================================================================
+; Function: POSE3D_IDENTITY
+; Description: Creates an identity pose (no translation, no rotation)
+;              Translation = (0, 0, 0), Rotation = Identity
+; Returns: POSE3D_T identity pose
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T POSE3D_IDENTITY ()
+   DECL POSE3D_T P
+
+   P.TRANSLATION = VECTOR3_ZERO()
+   P.ROTATION = MATRIX3_IDENTITY()
+
+   RETURN P
+ENDFCT
+
+; ============================================================================
+; Function: CREATE_POSE3D
+; Description: Creates a 3D pose from position (X, Y, Z) and Euler angles
+;              (A, B, C) following the KUKA convention
+; Parameters:
+;   X (IN) - X position (mm)
+;   Y (IN) - Y position (mm)
+;   Z (IN) - Z position (mm)
+;   A (IN) - Rotation about Z axis (degrees)
+;   B (IN) - Rotation about Y axis (degrees)
+;   C (IN) - Rotation about X axis (degrees)
+; Returns: POSE3D_T with translation and rotation
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T CREATE_POSE3D (X: IN, Y: IN, Z: IN, A: IN, B: IN, C: IN)
+   REAL X, Y, Z, A, B, C
+   DECL POSE3D_T P
+
+   ; Set translation as a 3D vector
+   P.TRANSLATION = CREATE_VECTOR3(X, Y, Z)
+   ; Convert Euler angles to rotation matrix
+   P.ROTATION = EULER_TO_ROTATION3D(A, B, C)
+
+   RETURN P
+ENDFCT
+
+; ============================================================================
+; Function: E6POS_TO_POSE3D
+; Description: Converts a KUKA E6POS (Cartesian robot position) to POSE3D_T
+; Parameters:
+;   P (IN) - E6POS with Cartesian coordinates and Euler angles
+; Returns: POSE3D_T equivalent
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T E6POS_TO_POSE3D (P: IN)
+   DECL E6POS P
+   RETURN CREATE_POSE3D(P.X, P.Y, P.Z, P.A, P.B, P.C)
+ENDFCT
+
+; ============================================================================
+; Function: FRAME_TO_POSE3D
+; Description: Converts a KUKA FRAME to POSE3D_T
+; Parameters:
+;   F (IN) - FRAME with Cartesian coordinates and Euler angles
+; Returns: POSE3D_T equivalent
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T FRAME_TO_POSE3D (F: IN)
+   DECL FRAME F
+   RETURN CREATE_POSE3D(F.X, F.Y, F.Z, F.A, F.B, F.C)
+ENDFCT
+
+; ============================================================================
+; Function: POSE3D_TO_FRAME
+; Description: Converts a POSE3D_T to a KUKA FRAME
+;              Extracts Euler angles from the rotation matrix
+; Parameters:
+;   P (IN) - Pose to convert
+; Returns: FRAME with equivalent position and Euler angles
+; ============================================================================
+GLOBAL DEFFCT FRAME POSE3D_TO_FRAME (P: IN)
+   DECL POSE3D_T P
+   DECL FRAME F
+   REAL A, B, C
+
+   ; Extract Euler angles from the rotation matrix
+   ROTATION3D_TO_EULER(P.ROTATION, A, B, C)
+
+   ; Assign Cartesian coordinates
+   F.X = P.TRANSLATION.X
+   F.Y = P.TRANSLATION.Y
+   F.Z = P.TRANSLATION.Z
+   ; Assign Euler angles
+   F.A = A
+   F.B = B
+   F.C = C
+
+   RETURN F
+ENDFCT
+
+; ============================================================================
+; Function: POSE3D_TRANSFORM
+; Description: Composes (chains) two transformations: P * P_OTHER
+;              Applies P_OTHER in the reference frame of P
+;              T_res = T_P + R_P * T_other
+;              R_res = R_P * R_other
+; Parameters:
+;   P       (IN) - Base pose (reference frame)
+;   P_OTHER (IN) - Pose to apply in the frame of P
+; Returns: POSE3D_T result of the composition
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T POSE3D_TRANSFORM (P: IN, P_OTHER: IN)
+   DECL POSE3D_T P, P_OTHER, RES
+
+   ; Rotate P_OTHER's translation into P's frame and add P's translation
+   RES.TRANSLATION = VECTOR3_ADD(P.TRANSLATION, MATRIX3_MULT_VECTOR3(P.ROTATION, P_OTHER.TRANSLATION))
+   ; Compose rotations by matrix multiplication
+   RES.ROTATION = MATRIX3_MULT(P.ROTATION, P_OTHER.ROTATION)
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: POSE3D_TRANSLATE_WORLD
+; Description: Translates a pose in the world coordinate system
+;              Adds the displacement directly to the current translation
+;              Rotation is not modified
+; Parameters:
+;   P       (IN) - Original pose
+;   T_DELTA (IN) - Displacement in world coordinates
+; Returns: POSE3D_T translated pose
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T POSE3D_TRANSLATE_WORLD (P: IN, T_DELTA: IN)
+   DECL POSE3D_T P, RES
+   DECL VECTOR3_T T_DELTA
+
+   ; Add the displacement directly (world coordinates)
+   RES.TRANSLATION = VECTOR3_ADD(P.TRANSLATION, T_DELTA)
+   ; Rotation remains unchanged
+   RES.ROTATION = P.ROTATION
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: POSE3D_TRANSLATE_LOCAL
+; Description: Translates a pose in its own local coordinate system
+;              The displacement is rotated to the world frame before adding
+;              Rotation is not modified
+; Parameters:
+;   P       (IN) - Original pose
+;   T_DELTA (IN) - Displacement in the pose's local coordinates
+; Returns: POSE3D_T translated pose
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T POSE3D_TRANSLATE_LOCAL (P: IN, T_DELTA: IN)
+   DECL POSE3D_T P, RES
+   DECL VECTOR3_T T_DELTA
+
+   ; Rotate the local displacement into the world frame and add it
+   RES.TRANSLATION = VECTOR3_ADD(P.TRANSLATION, MATRIX3_MULT_VECTOR3(P.ROTATION, T_DELTA))
+   ; Rotation remains unchanged
+   RES.ROTATION = P.ROTATION
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: POSE3D_ROTATE
+; Description: Applies an additional rotation to a pose (post-multiplication)
+;              R_final = R_P * R_DELTA (rotation in the local frame)
+;              Translation is not modified
+; Parameters:
+;   P       (IN) - Original pose
+;   R_DELTA (IN) - Additional rotation to apply
+; Returns: POSE3D_T pose with composed rotation
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T POSE3D_ROTATE (P: IN, R_DELTA: IN)
+   DECL POSE3D_T P, PF
+   DECL MATRIX3_T R_DELTA
+
+   ; Translation remains the same
+   PF.TRANSLATION = P.TRANSLATION
+   ; Compose the rotation: rotate in P's local frame
+   PF.ROTATION = MATRIX3_MULT(P.ROTATION, R_DELTA)
+
+   RETURN PF
+ENDFCT
+
+; ============================================================================
+; Function: POSE3D_DIFFERENCE
+; Description: Computes the relative transformation from P to P_OTHER
+;              expressed in the coordinate system of P
+;              T_diff = R_P^(-1) * (T_other - T_P)
+;              R_diff = R_P^(-1) * R_other
+; Parameters:
+;   P       (IN) - Reference pose (source)
+;   P_OTHER (IN) - Target pose
+; Returns: POSE3D_T relative transformation from P to P_OTHER
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T POSE3D_DIFFERENCE (P: IN, P_OTHER: IN)
+   DECL POSE3D_T P, P_OTHER, RES
+   DECL VECTOR3_T T_DIFF
+   DECL MATRIX3_T R_INV
+
+   ; Invert the rotation of P
+   R_INV = ROTATION3D_INVERSE(P.ROTATION)
+   ; Compute the translation difference in world coordinates
+   T_DIFF = VECTOR3_SUBTRACT(P_OTHER.TRANSLATION, P.TRANSLATION)
+
+   ; Express the translation difference in P's local frame
+   RES.TRANSLATION = MATRIX3_MULT_VECTOR3(R_INV, T_DIFF)
+   ; Compute the relative rotation
+   RES.ROTATION = MATRIX3_MULT(R_INV, P_OTHER.ROTATION)
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: POSE3D_INVERSE
+; Description: Computes the inverse pose
+;              If P transforms from frame A to B, the inverse transforms B to A
+;              R_inv = R^T
+;              T_inv = -(R_inv * T)
+; Parameters:
+;   P (IN) - Pose to invert
+; Returns: POSE3D_T inverse pose
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T POSE3D_INVERSE (P: IN)
+   DECL POSE3D_T P, RES
+
+   ; Inverse rotation is the transpose
+   RES.ROTATION = ROTATION3D_INVERSE(P.ROTATION)
+   ; Inverse translation: negate the original translation rotated by the inverse
+   RES.TRANSLATION = VECTOR3_NEGATE(MATRIX3_MULT_VECTOR3(RES.ROTATION, P.TRANSLATION))
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: POSE3D_NORM
+; Description: Computes the translation and rotation norms of a pose
+;              T_NORM = magnitude of the translation vector (mm)
+;              R_NORM = total rotation angle (degrees)
+; Parameters:
+;   P      (IN)  - Pose from which to compute the norms
+;   T_NORM (OUT) - Translation norm (distance in mm)
+;   R_NORM (OUT) - Rotation norm (angle in degrees)
+; ============================================================================
+GLOBAL DEF POSE3D_NORM (P: IN, T_NORM: OUT, R_NORM: OUT)
+   DECL POSE3D_T P
+   REAL T_NORM, R_NORM
+
+   ; Magnitude of the translation vector
+   T_NORM = VECTOR3_NORM(P.TRANSLATION)
+   ; Total rotation angle
+   R_NORM = ABS(ROTATION3D_GET_ANGLE(P.ROTATION))
+END

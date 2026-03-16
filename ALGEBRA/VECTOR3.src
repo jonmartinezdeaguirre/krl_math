@@ -1,0 +1,390 @@
+&ACCESS RV1
+DEF VECTOR3 ( )
+
+END
+
+; ============================================================================
+; Function: CREATE_VECTOR3
+; Description: Creates a 3D vector from its three components X, Y, Z
+; Parameters:
+;   X (IN) - X component of the vector
+;   Y (IN) - Y component of the vector
+;   Z (IN) - Z component of the vector
+; Returns: VECTOR3_T with the assigned values
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T CREATE_VECTOR3 (X: IN, Y: IN, Z: IN)
+   DECL REAL X, Y, Z
+   DECL VECTOR3_T V
+
+   V.X = X
+   V.Y = Y
+   V.Z = Z
+
+   RETURN V
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_ZERO
+; Description: Creates a null 3D vector (0, 0, 0)
+; Returns: VECTOR3_T with all components set to zero
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_ZERO ( )
+   RETURN CREATE_VECTOR3(0.0, 0.0, 0.0)
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_UNIT_X
+; Description: Creates the unit vector in the X-axis direction (1, 0, 0)
+; Returns: VECTOR3_T unit vector along X
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_UNIT_X ( )
+   RETURN CREATE_VECTOR3(1.0, 0.0, 0.0)
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_UNIT_Y
+; Description: Creates the unit vector in the Y-axis direction (0, 1, 0)
+; Returns: VECTOR3_T unit vector along Y
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_UNIT_Y ( )
+   RETURN CREATE_VECTOR3(0.0, 1.0, 0.0)
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_UNIT_Z
+; Description: Creates the unit vector in the Z-axis direction (0, 0, 1)
+; Returns: VECTOR3_T unit vector along Z
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_UNIT_Z ( )
+   RETURN CREATE_VECTOR3(0.0, 0.0, 1.0)
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_NEGATE
+; Description: Negates all vector components
+; Parameters:
+;   V (IN) - Vector to negate
+; Returns: VECTOR3_T with negated components (-X, -Y, -Z)
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_NEGATE (V: IN)
+   DECL VECTOR3_T V
+   RETURN CREATE_VECTOR3(-V.X, -V.Y, -V.Z)
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_ADD
+; Description: Adds two 3D vectors component-wise
+; Parameters:
+;   V1 (IN) - First vector
+;   V2 (IN) - Second vector
+; Returns: VECTOR3_T result of V1 + V2
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_ADD (V1: IN, V2: IN)
+   DECL VECTOR3_T V1, V2, RES
+
+   RES.X = V1.X + V2.X
+   RES.Y = V1.Y + V2.Y
+   RES.Z = V1.Z + V2.Z
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_SUBTRACT
+; Description: Subtracts two 3D vectors component-wise
+; Parameters:
+;   V1 (IN) - Minuend vector
+;   V2 (IN) - Subtrahend vector
+; Returns: VECTOR3_T result of V1 - V2
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_SUBTRACT (V1: IN, V2: IN)
+   DECL VECTOR3_T V1, V2, RES
+
+   RES.X = V1.X - V2.X
+   RES.Y = V1.Y - V2.Y
+   RES.Z = V1.Z - V2.Z
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_SCALE
+; Description: Scales a vector by multiplying each component by a scalar
+; Parameters:
+;   V (IN) - Vector to scale
+;   SCALAR (IN) - Scaling factor
+; Returns: VECTOR3_T result of V * SCALAR
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_SCALE (V: IN, SCALAR: IN)
+   DECL VECTOR3_T V, RES
+   DECL REAL SCALAR
+
+   RES.X = V.X * SCALAR
+   RES.Y = V.Y * SCALAR
+   RES.Z = V.Z * SCALAR
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_NORM
+; Description: Computes the Euclidean norm (magnitude) of the vector
+;              Norm = sqrt(X^2 + Y^2 + Z^2)
+; Parameters:
+;   V (IN) - Vector from which to compute the norm
+; Returns: REAL with the vector magnitude
+; ============================================================================
+GLOBAL DEFFCT REAL VECTOR3_NORM (V: IN)
+   DECL VECTOR3_T V
+   RETURN SQRT(V.X * V.X + V.Y * V.Y + V.Z * V.Z)
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_DOT
+; Description: Computes the dot (scalar) product of two vectors
+;              Dot = V1.X*V2.X + V1.Y*V2.Y + V1.Z*V2.Z
+; Parameters:
+;   V1 (IN) - First vector
+;   V2 (IN) - Second vector
+; Returns: REAL with the dot product
+; ============================================================================
+GLOBAL DEFFCT REAL VECTOR3_DOT (V1: IN, V2: IN)
+   DECL VECTOR3_T V1, V2
+   RETURN V1.X * V2.X + V1.Y * V2.Y + V1.Z * V2.Z
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_CROSS
+; Description: Computes the cross product of two vectors
+;              The result is perpendicular to both inputs (right-hand rule)
+; Parameters:
+;   V1 (IN) - First vector
+;   V2 (IN) - Second vector
+; Returns: VECTOR3_T result of V1 x V2
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_CROSS (V1: IN, V2: IN)
+   DECL VECTOR3_T V1, V2, RES
+
+   RES.X = V1.Y * V2.Z - V1.Z * V2.Y
+   RES.Y = V1.Z * V2.X - V1.X * V2.Z
+   RES.Z = V1.X * V2.Y - V1.Y * V2.X
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_MULT_COMPONENT
+; Description: Component-wise multiplication of two vectors (Hadamard product)
+; Parameters:
+;   V1 (IN) - First vector
+;   V2 (IN) - Second vector
+; Returns: VECTOR3_T with each component multiplied individually
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_MULT_COMPONENT (V1: IN, V2: IN)
+   DECL VECTOR3_T V1, V2, RES
+
+   RES.X = V1.X * V2.X
+   RES.Y = V1.Y * V2.Y
+   RES.Z = V1.Z * V2.Z
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_OUTER
+; Description: Computes the outer (tensor) product of two vectors
+;              Generates a 3x3 matrix where M[i][j] = V1[i] * V2[j]
+; Parameters:
+;   V1 (IN) - First vector (defines the rows)
+;   V2 (IN) - Second vector (defines the columns)
+; Returns: MATRIX3_T result of the tensor product
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T VECTOR3_OUTER (V1: IN, V2: IN)
+   DECL VECTOR3_T V1, V2
+   DECL MATRIX3_T RES
+
+   RES.M00 = V1.X * V2.X
+   RES.M01 = V1.X * V2.Y
+   RES.M02 = V1.X * V2.Z
+   RES.M10 = V1.Y * V2.X
+   RES.M11 = V1.Y * V2.Y
+   RES.M12 = V1.Y * V2.Z
+   RES.M20 = V1.Z * V2.X
+   RES.M21 = V1.Z * V2.Y
+   RES.M22 = V1.Z * V2.Z
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_SKEW
+; Description: Computes the skew-symmetric (cross-product) matrix of a vector
+;              Such that VECTOR3_SKEW(V) * U = VECTOR3_CROSS(V, U) for any U
+;              |  0   -Vz   Vy |
+;              |  Vz   0   -Vx |
+;              | -Vy   Vx   0  |
+; Parameters:
+;   V (IN) - Vector from which to build the skew-symmetric matrix
+; Returns: MATRIX3_T skew-symmetric matrix
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T VECTOR3_SKEW(V: IN)
+   DECL VECTOR3_T V
+   RETURN CREATE_MATRIX3(0.0, -V.Z, V.Y, V.Z, 0.0, -V.X, -V.Y, V.X, 0.0)
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_LERP
+; Description: Linear interpolation between two vectors
+;              Result = V1 + T * (V2 - V1)
+;              For T=0 returns V1, for T=1 returns V2
+; Parameters:
+;   V1 (IN) - Start vector (T=0)
+;   V2 (IN) - End vector (T=1)
+;   T  (IN) - Interpolation parameter [0.0, 1.0]
+; Returns: VECTOR3_T interpolated between V1 and V2
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_LERP (V1: IN, V2: IN, T: IN)
+   DECL VECTOR3_T V1, V2
+   DECL REAL T
+   RETURN VECTOR3_ADD(V1, VECTOR3_SCALE(VECTOR3_SUBTRACT(V2, V1), T))
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_ANGLE
+; Description: Computes the angle between two vectors in degrees
+;              angle = acos(dot(V1,V2) / (|V1| * |V2|))
+;              The cosine is clamped to [-1, 1] to avoid numerical errors
+; Parameters:
+;   V1 (IN) - First vector
+;   V2 (IN) - Second vector
+; Returns: REAL angle between the vectors (degrees)
+; ============================================================================
+GLOBAL DEFFCT REAL VECTOR3_ANGLE (V1: IN, V2: IN)
+   DECL VECTOR3_T V1, V2
+   DECL REAL DOT, NORM1, NORM2, TEMP
+
+   ; Compute the norms of both vectors
+   NORM1 = VECTOR3_NORM(V1)
+   NORM2 = VECTOR3_NORM(V2)
+
+   ; If either vector is zero-length, the angle is undefined; return 0
+   IF (NORM1 < EPS) OR (NORM2 < EPS) THEN
+      RETURN 0.0
+   ENDIF
+
+   ; Compute the cosine of the angle
+   DOT = VECTOR3_DOT(V1, V2)
+   TEMP = DOT / (NORM1 * NORM2)
+
+   ; Clamp to [-1, 1] to avoid numerical errors in ACOS
+   IF TEMP > 1.0 THEN
+      TEMP = 1.0
+   ENDIF
+
+   IF TEMP < -1.0 THEN
+      TEMP = -1.0
+   ENDIF
+
+   RETURN ACOS(TEMP)
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_NORMALIZE
+; Description: Returns a unit vector in the same direction as V
+;              If |V| < EPS, returns the zero vector to avoid division by zero
+; Parameters:
+;   V (IN) - Vector to normalize
+; Returns: VECTOR3_T with unit norm (length = 1)
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_NORMALIZE (V: IN)
+   DECL VECTOR3_T V
+   DECL REAL NORM
+
+   NORM = VECTOR3_NORM(V)
+
+   ; Guard against division by zero
+   IF NORM < EPS THEN
+      RETURN VECTOR3_ZERO()
+   ENDIF
+
+   RETURN VECTOR3_SCALE(V, 1 / NORM)
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_DISTANCE
+; Description: Computes the Euclidean distance between two 3D points
+;              Distance = |V1 - V2|
+; Parameters:
+;   V1 (IN) - First point
+;   V2 (IN) - Second point
+; Returns: REAL distance between the two points
+; ============================================================================
+GLOBAL DEFFCT REAL VECTOR3_DISTANCE (V1: IN, V2: IN)
+   DECL VECTOR3_T V1, V2
+   RETURN VECTOR3_NORM(VECTOR3_SUBTRACT(V1, V2))
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_REFLECT
+; Description: Reflects a vector with respect to a plane defined by its normal
+;              Reflection = V - 2 * dot(V, N) * N
+; Parameters:
+;   V (IN) - Incident vector to reflect
+;   N (IN) - Plane normal (normalized internally)
+; Returns: VECTOR3_T reflected vector
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_REFLECT (V: IN, N: IN)
+   DECL VECTOR3_T V, N, NN
+   DECL REAL DOT
+
+   ; Normalize the plane normal
+   NN = VECTOR3_NORMALIZE(N)
+   ; Compute the dot product between the vector and the normalized normal
+   DOT = VECTOR3_DOT(V, NN)
+
+   ; Apply the reflection formula: V - 2*(V.N)*N
+   RETURN VECTOR3_SUBTRACT(V, VECTOR3_SCALE(NN, 2 * DOT))
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_PROJECTION
+; Description: Projects vector V1 onto the direction of vector V2
+;              Projection = (dot(V1, V2) / dot(V2, V2)) * V2
+; Parameters:
+;   V1 (IN) - Vector to project
+;   V2 (IN) - Vector onto which the projection is performed
+; Returns: VECTOR3_T component of V1 in the direction of V2
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_PROJECTION (V1: IN, V2: IN)
+   DECL VECTOR3_T V1, V2
+   DECL REAL NORM2_SQ, TEMP
+
+   ; Squared length of V2
+   NORM2_SQ = VECTOR3_DOT(V2, V2)
+
+   ; If V2 is a zero vector, return zero
+   IF NORM2_SQ < EPS THEN
+      RETURN VECTOR3_ZERO()
+   ENDIF
+
+   ; Compute the scale factor and apply the projection
+   TEMP = VECTOR3_DOT(V1, V2) / NORM2_SQ
+   RETURN VECTOR3_SCALE(V2, TEMP)
+ENDFCT
+
+; ============================================================================
+; Function: VECTOR3_REJECTION
+; Description: Computes the component of V1 perpendicular to V2
+;              Rejection = V1 - projection(V1 onto V2)
+; Parameters:
+;   V1 (IN) - Original vector
+;   V2 (IN) - Reference vector
+; Returns: VECTOR3_T component of V1 perpendicular to V2
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T VECTOR3_REJECTION (V1: IN, V2: IN)
+   DECL VECTOR3_T V1, V2, PROJ
+   ; Compute the projection of V1 onto V2
+   PROJ = VECTOR3_PROJECTION(V1, V2)
+   ; Subtract the projection to obtain the perpendicular component
+   RETURN VECTOR3_SUBTRACT(V1, PROJ)
+ENDFCT

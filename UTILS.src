@@ -1,0 +1,141 @@
+&ACCESS RVO1
+&REL 5
+DEF UTILS ( )
+   DECL FRAME PROJECTION
+   DECL POSE3D_T P_PROJECTION
+
+   ;FOLD PTP $POS_ACT Vel=100 %
+      $BWDSTART = FALSE
+      PDAT_ACT = PPTP_T_HOMES
+      FDAT_ACT = FHOME
+      BAS(#PTP_PARAMS, PDAT_ACT.VEL)
+      SET_CD_PARAMS (0)
+      PTP $POS_ACT
+   ;ENDFOLD
+
+   ; Project the current robot pose onto the plane defined by HOME 5
+   P_PROJECTION = PROJ_CURR_POSE_ON_HOME(5, #NORMAL_Z, #PROJ_KEEP_POINT_ROT)
+   
+   ; Convert the projected pose to FRAME for robot motion
+   PROJECTION = POSE3D_TO_FRAME(P_PROJECTION)
+
+   ;FOLD LIN PROJECTION Vel=2 m/s
+      $BWDSTART = FALSE
+      LDAT_ACT = LLIN_T_CB
+      FDAT_ACT = FHOME
+      BAS(#PTP_PARAMS, LDAT_ACT.VEL)
+      SET_CD_PARAMS (0)
+      LIN PROJECTION
+   ;ENDFOLD
+   ; Move to HOME 5 position in joint coordinates
+   PTP $AXIS_HOME[5]
+END
+
+; ============================================================================
+; Function: GET_HOME_AS_POSE3D
+; Description: Retrieves a robot HOME position and converts it to POSE3D_T
+;              Uses forward kinematics (FORWARD) to convert joint coordinates
+;              ($AXIS_HOME) to Cartesian coordinates
+; Parameters:
+;   IDX (IN) - HOME index [1..5]
+; Returns: POSE3D_T HOME position in Cartesian coordinates
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T HOME_AS_POSE3D(IDX: IN)
+   INT IDX, STATUS
+   DECL E6POS HOME
+
+   ; Compute forward kinematics for the HOME position
+   STATUS = 0
+   HOME = FORWARD($AXIS_HOME[IDX], STATUS)
+
+   ; Convert from E6POS to POSE3D_T
+   RETURN E6POS_TO_POSE3D(HOME)
+ENDFCT
+
+; ============================================================================
+; Function: PROJ_CURR_POSE_ON_HOME
+; Description: Projects the current robot pose ($POS_ACT) onto the plane
+;              defined by a HOME position. Useful for moving the robot to
+;              the closest point on a HOME plane without changing its
+;              orientation or in-plane position
+; Parameters:
+;   IDX         (IN) - HOME index to use as reference plane [1..5]
+;   NORMAL_AXIS (IN) - HOME pose axis acting as plane normal
+;                       (#NORMAL_X, #NORMAL_Y or #NORMAL_Z)
+;   PROJ_MODE   (IN) - Projection mode for the result rotation
+;                       (#POINT_ROTATION: keep point rotation,
+;                        #PLANE_ROTATION: use plane rotation)
+; Returns: POSE3D_T with the projected position and rotation per mode
+; ============================================================================
+DEFFCT POSE3D_T PROJ_CURR_POSE_ON_HOME(IDX: IN, NORMAL_AXIS: IN, PROJ_MODE: IN)
+   ; Input parameter declarations
+   DECL INT IDX
+   DECL NORMAL_AXIS_T NORMAL_AXIS
+   DECL PROJ_MODE_T PROJ_MODE
+
+   DECL POSE3D_T P, P_HOME
+
+   ; Get the current robot pose as POSE3D_T
+   P = E6POS_TO_POSE3D($POS_ACT)
+   ; Get the HOME pose as POSE3D_T (using forward kinematics)
+   P_HOME = HOME_AS_POSE3D(IDX)
+   ; Project the current pose onto the plane defined by the HOME
+   RETURN PROJECT_POSE_ON_PLANE(P, P_HOME, NORMAL_AXIS, PROJ_MODE)
+ENDFCT
+
+; ============================================================================
+; Function: PROJECT_POSE_ON_PLANE
+; Description: Projects a 3D pose onto a plane defined by another pose
+;              The translation is orthogonally projected onto the plane
+;              The result rotation depends on the projection mode
+; Parameters:
+;   P_POINT     (IN) - Pose of the point to project
+;   P_PLANE     (IN) - Pose defining the projection plane
+;   NORMAL_AXIS (IN) - P_PLANE axis acting as plane normal
+;                       (#NORMAL_X=0, #NORMAL_Y=1, #NORMAL_Z=2)
+;   PROJ_MODE   (IN) - Projection mode for rotation:
+;                       #POINT_ROTATION: keep the original point rotation
+;                       #PLANE_ROTATION: use the plane rotation
+; Returns: POSE3D_T with projected position and rotation per mode
+; ============================================================================
+GLOBAL DEFFCT POSE3D_T PROJECT_POSE_ON_PLANE (P_POINT: IN, P_PLANE: IN, NORMAL_AXIS: IN, PROJ_MODE: IN)
+   DECL POSE3D_T P_POINT, P_PLANE, RES
+   DECL NORMAL_AXIS_T NORMAL_AXIS
+   DECL PROJ_MODE_T PROJ_MODE
+   DECL PLANE3D_T PLANE
+
+   DECL INT AX
+
+   ; Convert the NORMAL_AXIS enum to a numeric index
+   SWITCH NORMAL_AXIS
+      CASE #NORMAL_X
+         AX = 0
+      CASE #NORMAL_Y
+         AX = 1
+      CASE #NORMAL_Z
+         AX = 2
+      DEFAULT
+         AX = 2
+   ENDSWITCH
+
+   ; Create the plane from the pose and the selected normal axis
+   PLANE = POSE3D_TO_PLANE(P_PLANE, AX)
+
+   ; Project the point's translation onto the plane
+   RES.TRANSLATION = PLANE3D_PROJECT_POINT(PLANE, P_POINT.TRANSLATION)
+
+   ; Select the result rotation based on the projection mode
+   SWITCH PROJ_MODE
+      CASE #POINT_ROTATION
+         ; Keep the original point rotation
+         RES.ROTATION = P_POINT.ROTATION
+      CASE #PLANE_ROTATION
+         ; Use the plane rotation
+         RES.ROTATION = P_PLANE.ROTATION
+      DEFAULT
+         ; Default: keep the point rotation
+         RES.ROTATION = P_POINT.ROTATION
+   ENDSWITCH
+
+   RETURN RES
+ENDFCT

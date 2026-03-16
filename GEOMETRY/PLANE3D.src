@@ -1,0 +1,243 @@
+&ACCESS RV1
+DEF PLANE3D ( )
+
+END
+
+; ============================================================================
+; Function: CREATE_PLANE3D
+; Description: Creates a 3D plane defined by a point and a normal vector
+;              The normal is automatically normalized
+; Parameters:
+;   P (IN) - Point on the plane (plane origin)
+;   N (IN) - Plane normal vector (normalized internally)
+; Returns: PLANE3D_T with the point and the unit normal
+; ============================================================================
+GLOBAL DEFFCT PLANE3D_T CREATE_PLANE3D (P: IN, N: IN)
+   DECL VECTOR3_T P, N
+   DECL PLANE3D_T PLANE
+
+   PLANE.P = P
+   PLANE.N = VECTOR3_NORMALIZE(N)
+
+   RETURN PLANE
+ENDFCT
+
+; ============================================================================
+; Function: POINTS_TO_PLANE3D
+; Description: Creates a plane from three non-collinear points
+;              The normal is computed as (P2-P1) x (P3-P1) (right-hand rule)
+; Parameters:
+;   P1 (IN) - First point (used as plane origin)
+;   P2 (IN) - Second point
+;   P3 (IN) - Third point
+; Returns: PLANE3D_T defined by the three points
+; ============================================================================
+GLOBAL DEFFCT PLANE3D_T POINTS_TO_PLANE3D (P1: IN, P2: IN, P3: IN)
+   DECL VECTOR3_T P1, P2, P3
+   DECL VECTOR3_T V1, V2, N
+   DECL PLANE3D_T PLANE
+
+   ; Compute two edge vectors lying on the plane
+   V1 = VECTOR3_SUBTRACT(P2, P1)
+   V2 = VECTOR3_SUBTRACT(P3, P1)
+
+   ; Normal is the cross product of the two edge vectors
+   N = VECTOR3_CROSS(V1, V2)
+
+   ; Assign point and normalized normal
+   PLANE.P = P1
+   PLANE.N = VECTOR3_NORMALIZE(N)
+
+   RETURN PLANE
+ENDFCT
+
+; ============================================================================
+; Function: POSE3D_TO_PLANE
+; Description: Creates a plane from a 3D pose, using one of the rotation
+;              matrix columns as the plane normal vector
+; Parameters:
+;   P           (IN) - Pose defining the plane
+;   NORMAL_AXIS (IN) - Column index used as normal (0=X, 1=Y, 2=Z)
+; Returns: PLANE3D_T with the plane defined by the position and selected axis
+; ============================================================================
+GLOBAL DEFFCT PLANE3D_T POSE3D_TO_PLANE (P: IN, NORMAL_AXIS: IN)
+   DECL POSE3D_T P
+   DECL PLANE3D_T PLANE
+   DECL INT NORMAL_AXIS
+
+   ; The plane point is the pose translation
+   PLANE.P = P.TRANSLATION
+   ; The normal is the corresponding column of the rotation matrix
+   PLANE.N = MATRIX3_COLUMN(P.ROTATION, NORMAL_AXIS)
+
+   RETURN PLANE
+ENDFCT
+
+; ============================================================================
+; Function: PLANE3D_DISTANCE_POINT
+; Description: Computes the signed distance from a point to the plane
+;              Distance = dot(P - Plane.P, Plane.N)
+;              Positive if the point is on the normal side,
+;              negative if on the opposite side
+; Parameters:
+;   PLANE (IN) - Reference plane
+;   P     (IN) - Point from which to compute the distance
+; Returns: REAL signed distance from the point to the plane
+; ============================================================================
+GLOBAL DEFFCT REAL PLANE3D_DISTANCE_POINT (PLANE: IN, P: IN)
+   DECL PLANE3D_T PLANE
+   DECL VECTOR3_T P, V
+
+   ; Vector from the plane point to the given point
+   V = VECTOR3_SUBTRACT(P, PLANE.P)
+   ; Signed distance is the projection onto the normal
+   RETURN VECTOR3_DOT(V, PLANE.N)
+ENDFCT
+
+; ============================================================================
+; Function: PLANE3D_PROJECT_POINT
+; Description: Projects a point onto the plane (closest point on the plane)
+;              Projection = P - d * N, where d is the signed distance
+; Parameters:
+;   PLANE (IN) - Plane onto which to project
+;   P     (IN) - Point to project
+; Returns: VECTOR3_T projected point on the plane
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T PLANE3D_PROJECT_POINT (PLANE: IN, P: IN)
+   DECL PLANE3D_T PLANE
+   DECL VECTOR3_T P
+   DECL REAL D
+
+   ; Compute the signed distance from the point to the plane
+   D = PLANE3D_DISTANCE_POINT(PLANE, P)
+   ; Subtract the normal component to project onto the plane
+   RETURN VECTOR3_SUBTRACT(P, VECTOR3_SCALE(PLANE.N, D))
+ENDFCT
+
+; ============================================================================
+; Function: PLANE3D_REFLECT_POINT
+; Description: Reflects a point across the plane (mirror symmetry)
+;              Reflection = P - 2 * d * N, where d is the signed distance
+; Parameters:
+;   PLANE (IN) - Reflection plane
+;   P     (IN) - Point to reflect
+; Returns: VECTOR3_T reflected point
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T PLANE3D_REFLECT_POINT (PLANE: IN, P: IN)
+   DECL PLANE3D_T PLANE
+   DECL VECTOR3_T P
+   DECL REAL D
+
+   ; Compute the signed distance from the point to the plane
+   D = PLANE3D_DISTANCE_POINT(PLANE, P)
+
+   ; Reflect by subtracting twice the normal component
+   RETURN VECTOR3_SUBTRACT(P, VECTOR3_SCALE(PLANE.N, 2.0 * D))
+ENDFCT
+
+; ============================================================================
+; Function: PLANE3D_ANGLE
+; Description: Computes the dihedral angle between two planes
+;              Angle = acos(dot(N1, N2))
+;              Normals must be normalized
+; Parameters:
+;   PLANE1 (IN) - First plane
+;   PLANE2 (IN) - Second plane
+; Returns: REAL angle between the planes (degrees)
+; ============================================================================
+GLOBAL DEFFCT REAL PLANE3D_ANGLE (PLANE1: IN, PLANE2: IN)
+   DECL PLANE3D_T PLANE1, PLANE2
+   DECL REAL DOT
+
+   ; Dot product of the normals
+   DOT = VECTOR3_DOT(PLANE1.N, PLANE2.N)
+
+   ; Clamp to avoid numerical errors in ACOS
+   IF DOT > 1.0 THEN
+      DOT = 1.0
+   ENDIF
+
+   IF DOT < -1.0 THEN
+      DOT = -1.0
+   ENDIF
+
+   RETURN ACOS(DOT)
+ENDFCT
+
+; ============================================================================
+; Function: PLANE3D_INTERSECT_LINE
+; Description: Computes the intersection of a line with a plane
+;              Uses the parametric equation: P_hit = L_POINT + T * L_DIR
+;              where T = dot(Plane.P - L_POINT, N) / dot(L_DIR, N)
+; Parameters:
+;   PLANE   (IN)  - Plane to intersect with
+;   L_POINT (IN)  - Point on the line
+;   L_DIR   (IN)  - Direction of the line
+;   RESULT  (OUT) - Intersection point (if it exists)
+; Returns: BOOL TRUE if intersection exists (line is not parallel to plane)
+; ============================================================================
+GLOBAL DEFFCT BOOL PLANE3D_INTERSECT_LINE (PLANE: IN, L_POINT: IN, L_DIR: IN, RESULT: OUT)
+   DECL PLANE3D_T PLANE
+   DECL VECTOR3_T L_POINT, L_DIR, RESULT
+   DECL VECTOR3_T V
+   DECL REAL DEN, T
+
+   ; Compute the denominator: dot product of line direction with the normal
+   DEN = VECTOR3_DOT(L_DIR, PLANE.N)
+
+   ; If the denominator is near zero, the line is parallel to the plane
+   IF ABS(DEN) < EPS THEN
+      RETURN FALSE
+   ENDIF
+
+   ; Compute the parametric T value
+   V = VECTOR3_SUBTRACT(PLANE.P, L_POINT)
+   T = VECTOR3_DOT(V, PLANE.N) / DEN
+
+   ; Compute the intersection point
+   RESULT = VECTOR3_ADD(L_POINT, VECTOR3_SCALE(L_DIR, T))
+
+   RETURN TRUE
+ENDFCT
+
+; ============================================================================
+; Function: PLANE3D_TRANSFORM
+; Description: Transforms a plane by applying a pose (rotation + translation)
+;              The plane point is rotated and translated
+;              The normal is only rotated (normals do not translate)
+; Parameters:
+;   PLANE (IN) - Plane to transform
+;   T     (IN) - Transformation pose (rotation + translation)
+; Returns: PLANE3D_T transformed plane
+; ============================================================================
+GLOBAL DEFFCT PLANE3D_T PLANE3D_TRANSFORM (PLANE: IN, T: IN)
+   DECL PLANE3D_T PLANE, RES
+   DECL POSE3D_T T
+
+   ; Transform the point: rotate then translate
+   RES.P = VECTOR3_ADD(MATRIX3_MULT_VECTOR3(T.ROTATION, PLANE.P), T.TRANSLATION)
+   ; Transform the normal: rotate only (normals do not translate)
+   RES.N = MATRIX3_MULT_VECTOR3(T.ROTATION, PLANE.N)
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: PLANE3D_IS_PARALLEL
+; Description: Determines whether two planes are parallel
+;              Two planes are parallel if the cross product of their normals
+;              has near-zero magnitude
+; Parameters:
+;   PLANE1 (IN) - First plane
+;   PLANE2 (IN) - Second plane
+; Returns: BOOL TRUE if the planes are parallel
+; ============================================================================
+GLOBAL DEFFCT BOOL PLANE3D_IS_PARALLEL (PLANE1: IN, PLANE2: IN)
+   DECL PLANE3D_T PLANE1, PLANE2
+   DECL VECTOR3_T C
+
+   ; Cross product of parallel normals is the zero vector
+   C = VECTOR3_CROSS(PLANE1.N, PLANE2.N)
+
+   RETURN VECTOR3_NORM(C) < EPS
+ENDFCT

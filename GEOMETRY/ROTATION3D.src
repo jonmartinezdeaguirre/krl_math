@@ -1,0 +1,297 @@
+&ACCESS RV1
+DEF ROTATION3D ( )
+END
+
+; ============================================================================
+; Function: EULER_TO_ROTATION3D
+; Description: Converts Euler angles (ZYX convention / A, B, C) to a 3x3
+;              rotation matrix. Follows the KUKA convention:
+;              A = rotation about Z axis (yaw)
+;              B = rotation about Y axis (pitch)
+;              C = rotation about X axis (roll)
+;              R = Rz(A) * Ry(B) * Rx(C)
+; Parameters:
+;   A (IN) - Z-axis rotation angle (degrees)
+;   B (IN) - Y-axis rotation angle (degrees)
+;   C (IN) - X-axis rotation angle (degrees)
+; Returns: MATRIX3_T 3x3 rotation matrix
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T EULER_TO_ROTATION3D (A: IN, B: IN, C: IN)
+   REAL A, B, C
+   REAL CR, SR, CP, SP, CY, SY
+   DECL MATRIX3_T R
+
+   ; Precompute sines and cosines
+   CR = COS(C)   ; cos(roll)
+   SR = SIN(C)   ; sin(roll)
+   CP = COS(B)   ; cos(pitch)
+   SP = SIN(B)   ; sin(pitch)
+   CY = COS(A)   ; cos(yaw)
+   SY = SIN(A)   ; sin(yaw)
+
+   ; Row 0
+   R.M00 = CP * CY
+   R.M01 = SR * SP * CY - CR * SY
+   R.M02 = CR * SP * CY + SR * SY
+
+   ; Row 1
+   R.M10 = CP * SY
+   R.M11 = SR * SP * SY + CR * CY
+   R.M12 = CR * SP * SY - SR * CY
+
+   ; Row 2
+   R.M20 = -SP
+   R.M21 = SR * CP
+   R.M22 = CR * CP
+
+   RETURN R
+ENDFCT
+
+; ============================================================================
+; Function: FRAME_TO_ROTATION3D
+; Description: Extracts the rotation part of a FRAME and converts it to a
+;              3x3 rotation matrix using its A, B, C Euler angles
+; Parameters:
+;   F (IN) - FRAME from which to extract the rotation
+; Returns: MATRIX3_T corresponding rotation matrix
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T FRAME_TO_ROTATION3D (F: IN)
+   DECL FRAME F
+   RETURN EULER_TO_ROTATION3D(F.A, F.B, F.C)
+ENDFCT
+
+; ============================================================================
+; Function: ROTATION3D_TO_EULER
+; Description: Converts a 3x3 rotation matrix to Euler angles (A, B, C)
+;              using the KUKA ZYX convention
+;              Handles the gimbal lock case when cos(B) is close to zero
+; Parameters:
+;   R (IN)  - Rotation matrix
+;   A (OUT) - Z-axis rotation angle (degrees)
+;   B (OUT) - Y-axis rotation angle (degrees)
+;   C (OUT) - X-axis rotation angle (degrees)
+; ============================================================================
+GLOBAL DEF ROTATION3D_TO_EULER (R: IN, A: OUT, B: OUT, C: OUT)
+   DECL MATRIX3_T R
+   REAL A, B, C, TEMP
+
+   ; Extract -sin(B) from R[2][0] and clamp to [-1, 1]
+   TEMP = -R.M20
+
+   IF TEMP > 1.0 THEN
+      TEMP = 1.0
+   ENDIF
+
+   IF TEMP < -1.0 THEN
+      TEMP = -1.0
+   ENDIF
+
+   ; Compute pitch angle B from arcsin: B = 90 - acos(sin(B)) = asin(sin(B))
+   B = 90 - ACOS(TEMP)
+
+   ; Normal case: cos(B) != 0 (no gimbal lock)
+   IF ABS(COS(B)) > EPS THEN
+       C = ATAN2(R.M21, R.M22)   ; Roll
+       A = ATAN2(R.M10, R.M00)   ; Yaw
+   ELSE
+       ; Gimbal lock: B = +/-90 deg, A and C are coupled
+       C = ATAN2(-R.M12, R.M11)
+       A = 0
+   ENDIF
+END
+
+; ============================================================================
+; Function: MATRIX3_IS_ROTATION3D
+; Description: Checks whether a 3x3 matrix is a valid rotation matrix
+;              A rotation matrix satisfies:
+;              1. det(M) = 1 (not -1, which would be a reflection)
+;              2. M is orthogonal: M^T * M = I
+; Parameters:
+;   M (IN) - Matrix to verify
+; Returns: BOOL TRUE if M is a valid rotation matrix
+; ============================================================================
+GLOBAL DEFFCT BOOL MATRIX3_IS_ROTATION3D (M: IN)
+   DECL MATRIX3_T M, TEST
+   DECL REAL DET
+
+   ; Determinant must be 1 for proper rotations
+   DET = MATRIX3_DETERMINANT(M)
+   ; Orthogonality check: M^T * M must equal the identity
+   TEST = MATRIX3_MULT(MATRIX3_TRANSPOSE(M), M)
+
+   RETURN (ABS(DET - 1.0) < EPS) AND MATRIX3_IS_IDENTITY(TEST)
+ENDFCT
+
+; ============================================================================
+; Function: ROTATION3D_X
+; Description: Creates a rotation matrix about the X axis
+;              | 1    0       0    |
+;              | 0  cos(a)  -sin(a)|
+;              | 0  sin(a)   cos(a)|
+; Parameters:
+;   ANGLE (IN) - Rotation angle (degrees)
+; Returns: MATRIX3_T rotation matrix about X
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T ROTATION3D_X (ANGLE: IN)
+   DECL REAL ANGLE, C, S
+
+   C = COS(ANGLE)
+   S = SIN(ANGLE)
+
+   RETURN CREATE_MATRIX3(1.0, 0.0, 0.0, 0.0, C, -S, 0.0, S, C)
+ENDFCT
+
+; ============================================================================
+; Function: ROTATION3D_Y
+; Description: Creates a rotation matrix about the Y axis
+;              |  cos(a)  0  sin(a)|
+;              |    0     1    0   |
+;              | -sin(a)  0  cos(a)|
+; Parameters:
+;   ANGLE (IN) - Rotation angle (degrees)
+; Returns: MATRIX3_T rotation matrix about Y
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T ROTATION3D_Y (ANGLE: IN)
+   DECL REAL ANGLE, C, S
+
+   C = COS(ANGLE)
+   S = SIN(ANGLE)
+
+   RETURN CREATE_MATRIX3(C, 0.0, S, 0.0, 1.0, 0.0, -S, 0.0, C)
+ENDFCT
+
+; ============================================================================
+; Function: ROTATION3D_Z
+; Description: Creates a rotation matrix about the Z axis
+;              | cos(a)  -sin(a)  0|
+;              | sin(a)   cos(a)  0|
+;              |   0        0     1|
+; Parameters:
+;   ANGLE (IN) - Rotation angle (degrees)
+; Returns: MATRIX3_T rotation matrix about Z
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T ROTATION3D_Z (ANGLE: IN)
+   DECL REAL ANGLE, C, S
+
+   C = COS(ANGLE)
+   S = SIN(ANGLE)
+
+   RETURN CREATE_MATRIX3(C, -S, 0.0, S, C, 0.0, 0.0, 0.0, 1.0)
+ENDFCT
+
+; ============================================================================
+; Function: ROTATION3D_INVERSE
+; Description: Computes the inverse of a rotation matrix
+;              For rotation matrices, the inverse equals the transpose:
+;              R^(-1) = R^T
+; Parameters:
+;   R (IN) - Rotation matrix to invert
+; Returns: MATRIX3_T inverse rotation
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T ROTATION3D_INVERSE (R: IN)
+   DECL MATRIX3_T R
+   RETURN MATRIX3_TRANSPOSE(R)
+ENDFCT
+
+; ============================================================================
+; Function: ROTATION3D_DIFFERENCE
+; Description: Computes the relative rotation between two rotations
+;              R_diff = R^(-1) * R_OTHER
+;              Represents the rotation needed to go from R to R_OTHER
+; Parameters:
+;   R       (IN) - Reference rotation (source)
+;   R_OTHER (IN) - Target rotation
+; Returns: MATRIX3_T relative rotation from R to R_OTHER
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T ROTATION3D_DIFFERENCE (R: IN, R_OTHER: IN)
+   DECL MATRIX3_T R, R_OTHER
+   RETURN MATRIX3_MULT(ROTATION3D_INVERSE(R), R_OTHER)
+ENDFCT
+
+; ============================================================================
+; Function: ROTATION3D_GET_ANGLE
+; Description: Extracts the total rotation angle from a rotation matrix
+;              angle = acos((trace(R) - 1) / 2)
+;              Result is always in the range [0, 180] degrees
+; Parameters:
+;   R (IN) - Rotation matrix
+; Returns: REAL rotation angle (degrees)
+; ============================================================================
+GLOBAL DEFFCT REAL ROTATION3D_GET_ANGLE (R: IN)
+   DECL MATRIX3_T R
+   REAL COS_THETA
+
+   ; Compute cosine of the rotation angle from the trace
+   COS_THETA = (MATRIX3_TRACE(R) - 1.0) / 2.0
+
+   ; Clamp to [-1, 1] to avoid numerical errors in ACOS
+   IF COS_THETA > 1.0 THEN
+      COS_THETA = 1.0
+   ENDIF
+
+   IF COS_THETA < -1.0 THEN
+      COS_THETA = -1.0
+   ENDIF
+
+   RETURN ACOS(COS_THETA)
+ENDFCT
+
+; ============================================================================
+; Function: ROTATION3D_GET_X_ANGLE
+; Description: Computes the angle between the X axes of two rotations
+;              Compares column 0 (local X axis) of both matrices
+; Parameters:
+;   R1 (IN) - First rotation
+;   R2 (IN) - Second rotation
+; Returns: REAL angle between the X axes (degrees)
+; ============================================================================
+GLOBAL DEFFCT REAL ROTATION3D_GET_X_ANGLE (R1: IN, R2: IN)
+   DECL MATRIX3_T R1, R2
+   DECL VECTOR3_T V1, V2
+
+   ; Extract column 0 (X axis) from each rotation
+   V1 = MATRIX3_COLUMN(R1, 0)
+   V2 = MATRIX3_COLUMN(R2, 0)
+
+   RETURN VECTOR3_ANGLE(V1, V2)
+ENDFCT
+
+; ============================================================================
+; Function: ROTATION3D_GET_Y_ANGLE
+; Description: Computes the angle between the Y axes of two rotations
+;              Compares column 1 (local Y axis) of both matrices
+; Parameters:
+;   R1 (IN) - First rotation
+;   R2 (IN) - Second rotation
+; Returns: REAL angle between the Y axes (degrees)
+; ============================================================================
+GLOBAL DEFFCT REAL ROTATION3D_GET_Y_ANGLE (R1: IN, R2: IN)
+   DECL MATRIX3_T R1, R2
+   DECL VECTOR3_T V1, V2
+
+   ; Extract column 1 (Y axis) from each rotation
+   V1 = MATRIX3_COLUMN(R1, 1)
+   V2 = MATRIX3_COLUMN(R2, 1)
+
+   RETURN VECTOR3_ANGLE(V1, V2)
+ENDFCT
+
+; ============================================================================
+; Function: ROTATION3D_GET_Z_ANGLE
+; Description: Computes the angle between the Z axes of two rotations
+;              Compares column 2 (local Z axis) of both matrices
+; Parameters:
+;   R1 (IN) - First rotation
+;   R2 (IN) - Second rotation
+; Returns: REAL angle between the Z axes (degrees)
+; ============================================================================
+GLOBAL DEFFCT REAL ROTATION3D_GET_Z_ANGLE (R1: IN, R2: IN)
+   DECL MATRIX3_T R1, R2
+   DECL VECTOR3_T V1, V2
+
+   ; Extract column 2 (Z axis) from each rotation
+   V1 = MATRIX3_COLUMN(R1, 2)
+   V2 = MATRIX3_COLUMN(R2, 2)
+
+   RETURN VECTOR3_ANGLE(V1, V2)
+ENDFCT

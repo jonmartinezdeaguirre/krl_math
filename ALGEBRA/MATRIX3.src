@@ -1,0 +1,460 @@
+&ACCESS RV1
+DEF MATRIX3 ( )
+END
+
+; ============================================================================
+; Function: CREATE_MATRIX3
+; Description: Creates a 3x3 matrix from its 9 individual elements
+;              The matrix is organized by rows:
+;              | M00 M01 M02 |
+;              | M10 M11 M12 |
+;              | M20 M21 M22 |
+; Parameters:
+;   M00..M22 (IN) - The 9 matrix elements (row, column)
+; Returns: MATRIX3_T with the assigned values
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T CREATE_MATRIX3 (M00: IN, M01: IN, M02: IN, M10: IN, M11: IN, M12: IN, M20: IN, M21: IN, M22: IN)
+   DECL REAL M00, M01, M02, M10, M11, M12, M20, M21, M22
+   DECL MATRIX3_T M
+
+   M.M00 = M00
+   M.M01 = M01
+   M.M02 = M02
+   M.M10 = M10
+   M.M11 = M11
+   M.M12 = M12
+   M.M20 = M20
+   M.M21 = M21
+   M.M22 = M22
+
+   RETURN M
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_ZERO
+; Description: Creates a 3x3 matrix with all elements set to zero
+; Returns: MATRIX3_T zero matrix
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T MATRIX3_ZERO ( )
+   DECL MATRIX3_T RES
+
+   RES.M00 = 0.0
+   RES.M01 = 0.0
+   RES.M02 = 0.0
+   RES.M10 = 0.0
+   RES.M11 = 0.0
+   RES.M12 = 0.0
+   RES.M20 = 0.0
+   RES.M21 = 0.0
+   RES.M22 = 0.0
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_IDENTITY
+; Description: Creates the 3x3 identity matrix
+;              | 1 0 0 |
+;              | 0 1 0 |
+;              | 0 0 1 |
+; Returns: MATRIX3_T identity matrix
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T MATRIX3_IDENTITY ( )
+   DECL MATRIX3_T RES
+
+   ; Main diagonal values
+   RES.M00 = 1.0
+   RES.M11 = 1.0
+   RES.M22 = 1.0
+
+   ; Off-diagonal values set to zero
+   RES.M01 = 0.0
+   RES.M02 = 0.0
+   RES.M10 = 0.0
+   RES.M12 = 0.0
+   RES.M20 = 0.0
+   RES.M21 = 0.0
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_DIAGONAL
+; Description: Creates a 3x3 diagonal matrix with the specified values
+;              on the main diagonal and zeros elsewhere
+;              | M00  0   0  |
+;              |  0  M11  0  |
+;              |  0   0  M22 |
+; Parameters:
+;   M00 (IN) - Diagonal element [0,0]
+;   M11 (IN) - Diagonal element [1,1]
+;   M22 (IN) - Diagonal element [2,2]
+; Returns: MATRIX3_T diagonal matrix
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T MATRIX3_DIAGONAL (M00: IN, M11: IN, M22: IN)
+   DECL REAL M00, M11, M22
+   DECL MATRIX3_T RES
+
+   ; Diagonal values
+   RES.M00 = M00
+   RES.M11 = M11
+   RES.M22 = M22
+
+   ; Off-diagonal values set to zero
+   RES.M01 = 0.0
+   RES.M02 = 0.0
+   RES.M10 = 0.0
+   RES.M12 = 0.0
+   RES.M20 = 0.0
+   RES.M21 = 0.0
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_ROW
+; Description: Extracts a matrix row as a 3D vector
+; Parameters:
+;   M   (IN) - Matrix from which the row will be extracted
+;   ROW (IN) - Row index (0, 1 or 2)
+; Returns: VECTOR3_T containing the requested row elements
+;          If the index is out of range, returns a zero vector
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T MATRIX3_ROW (M: IN, ROW: IN)
+   DECL INT ROW
+   DECL MATRIX3_T M
+
+   ; Row 0: (M00, M01, M02)
+   IF ROW == 0 THEN
+      RETURN CREATE_VECTOR3(M.M00, M.M01, M.M02)
+   ENDIF
+
+   ; Row 1: (M10, M11, M12)
+   IF ROW == 1 THEN
+      RETURN CREATE_VECTOR3(M.M10, M.M11, M.M12)
+   ENDIF
+
+   ; Row 2: (M20, M21, M22)
+   IF ROW == 2 THEN
+      RETURN CREATE_VECTOR3(M.M20, M.M21, M.M22)
+   ENDIF
+
+   ; Index out of range: return zero vector
+   RETURN VECTOR3_ZERO()
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_COLUMN
+; Description: Extracts a matrix column as a 3D vector
+; Parameters:
+;   M   (IN) - Matrix from which the column will be extracted
+;   COL (IN) - Column index (0, 1 or 2)
+; Returns: VECTOR3_T containing the requested column elements
+;          If the index is out of range, returns a zero vector
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T MATRIX3_COLUMN (M: IN, COL: IN)
+   DECL INT COL
+   DECL MATRIX3_T M
+
+   ; Column 0: (M00, M10, M20)
+   IF COL == 0 THEN
+      RETURN CREATE_VECTOR3(M.M00, M.M10, M.M20)
+   ENDIF
+
+   ; Column 1: (M01, M11, M21)
+   IF COL == 1 THEN
+      RETURN CREATE_VECTOR3(M.M01, M.M11, M.M21)
+   ENDIF
+
+   ; Column 2: (M02, M12, M22)
+   IF COL == 2 THEN
+      RETURN CREATE_VECTOR3(M.M02, M.M12, M.M22)
+   ENDIF
+
+   ; Index out of range: return zero vector
+   RETURN VECTOR3_ZERO()
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_IS_APPROX
+; Description: Compares two 3x3 matrices element by element with tolerance EPS
+;              Determines whether both matrices are approximately equal
+; Parameters:
+;   M1 (IN) - First matrix
+;   M2 (IN) - Second matrix
+; Returns: BOOL TRUE if all differences are smaller than EPS
+; ============================================================================
+GLOBAL DEFFCT BOOL MATRIX3_IS_APPROX(M1: IN, M2: IN)
+   DECL MATRIX3_T M1, M2
+
+   ; Compare each element with tolerance EPS
+   IF ABS(M1.M00 - M2.M00) > EPS THEN
+      RETURN FALSE
+   ENDIF
+   IF ABS(M1.M01 - M2.M01) > EPS THEN
+      RETURN FALSE
+   ENDIF
+   IF ABS(M1.M02 - M2.M02) > EPS THEN
+      RETURN FALSE
+   ENDIF
+   IF ABS(M1.M11 - M2.M11) > EPS THEN
+      RETURN FALSE
+   ENDIF
+   IF ABS(M1.M10 - M2.M10) > EPS THEN
+      RETURN FALSE
+   ENDIF
+   IF ABS(M1.M12 - M2.M12) > EPS THEN
+      RETURN FALSE
+   ENDIF
+   IF ABS(M1.M20 - M2.M20) > EPS THEN
+      RETURN FALSE
+   ENDIF
+   IF ABS(M1.M21 - M2.M21) > EPS THEN
+      RETURN FALSE
+   ENDIF
+   IF ABS(M1.M22 - M2.M22) > EPS THEN
+      RETURN FALSE
+   ENDIF
+
+   RETURN TRUE
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_IS_IDENTITY
+; Description: Checks whether the matrix is approximately the identity
+; Parameters:
+;   M (IN) - Matrix to verify
+; Returns: BOOL TRUE if the matrix is approximately the identity
+; ============================================================================
+GLOBAL DEFFCT BOOL MATRIX3_IS_IDENTITY(M: IN)
+   DECL MATRIX3_T M, I
+
+   ; Create identity matrix and compare
+   I = MATRIX3_IDENTITY()
+   RETURN MATRIX3_IS_APPROX(M, I)
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_MULT
+; Description: Multiplies two 3x3 matrices
+;              RES = M1 * M2 (standard matrix product)
+;              Each element RES[i][j] = sum(M1[i][k] * M2[k][j]) for k=0..2
+; Parameters:
+;   M1 (IN) - First matrix (left)
+;   M2 (IN) - Second matrix (right)
+; Returns: MATRIX3_T result of the matrix multiplication
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T MATRIX3_MULT (M1: IN, M2: IN)
+   DECL MATRIX3_T M1, M2, RES
+
+   ; Row 0
+   RES.M00 = M1.M00 * M2.M00 + M1.M01 * M2.M10 + M1.M02 * M2.M20
+   RES.M01 = M1.M00 * M2.M01 + M1.M01 * M2.M11 + M1.M02 * M2.M21
+   RES.M02 = M1.M00 * M2.M02 + M1.M01 * M2.M12 + M1.M02 * M2.M22
+   ; Row 1
+   RES.M10 = M1.M10 * M2.M00 + M1.M11 * M2.M10 + M1.M12 * M2.M20
+   RES.M11 = M1.M10 * M2.M01 + M1.M11 * M2.M11 + M1.M12 * M2.M21
+   RES.M12 = M1.M10 * M2.M02 + M1.M11 * M2.M12 + M1.M12 * M2.M22
+   ; Row 2
+   RES.M20 = M1.M20 * M2.M00 + M1.M21 * M2.M10 + M1.M22 * M2.M20
+   RES.M21 = M1.M20 * M2.M01 + M1.M21 * M2.M11 + M1.M22 * M2.M21
+   RES.M22 = M1.M20 * M2.M02 + M1.M21 * M2.M12 + M1.M22 * M2.M22
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_MULT_VECTOR3
+; Description: Multiplies a 3x3 matrix by a 3D vector (M * V)
+;              Transforms the vector by applying the linear transformation
+;              defined by the matrix
+; Parameters:
+;   M (IN) - Transformation matrix
+;   V (IN) - Vector to transform
+; Returns: VECTOR3_T result of M * V
+; ============================================================================
+GLOBAL DEFFCT VECTOR3_T MATRIX3_MULT_VECTOR3 (M: IN, V: IN)
+   DECL MATRIX3_T M
+   DECL VECTOR3_T V, RES
+
+   ; Each result component is the dot product of a row with the vector
+   RES.X = M.M00 * V.X + M.M01 * V.Y + M.M02 * V.Z
+   RES.Y = M.M10 * V.X + M.M11 * V.Y + M.M12 * V.Z
+   RES.Z = M.M20 * V.X + M.M21 * V.Y + M.M22 * V.Z
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_SCALE
+; Description: Scales all elements of the matrix by a scalar factor
+; Parameters:
+;   M      (IN) - Matrix to scale
+;   SCALAR (IN) - Scale factor
+; Returns: MATRIX3_T with each element multiplied by SCALAR
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T MATRIX3_SCALE (M: IN, SCALAR: IN)
+   DECL MATRIX3_T M, RES
+   DECL REAL SCALAR
+
+   RES.M00 = M.M00 * SCALAR
+   RES.M01 = M.M01 * SCALAR
+   RES.M02 = M.M02 * SCALAR
+   RES.M10 = M.M10 * SCALAR
+   RES.M11 = M.M11 * SCALAR
+   RES.M12 = M.M12 * SCALAR
+   RES.M20 = M.M20 * SCALAR
+   RES.M21 = M.M21 * SCALAR
+   RES.M22 = M.M22 * SCALAR
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_ADD
+; Description: Adds two 3x3 matrices element by element
+; Parameters:
+;   M1 (IN) - First matrix
+;   M2 (IN) - Second matrix
+; Returns: MATRIX3_T result of M1 + M2
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T MATRIX3_ADD (M1: IN, M2: IN)
+   DECL MATRIX3_T M1, M2, RES
+
+   RES.M00 = M1.M00 + M2.M00
+   RES.M01 = M1.M01 + M2.M01
+   RES.M02 = M1.M02 + M2.M02
+   RES.M10 = M1.M10 + M2.M10
+   RES.M11 = M1.M11 + M2.M11
+   RES.M12 = M1.M12 + M2.M12
+   RES.M20 = M1.M20 + M2.M20
+   RES.M21 = M1.M21 + M2.M21
+   RES.M22 = M1.M22 + M2.M22
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_TRACE
+; Description: Computes the matrix trace (sum of the diagonal elements)
+;              Trace = M00 + M11 + M22
+; Parameters:
+;   M (IN) - Matrix from which to compute the trace
+; Returns: REAL containing the matrix trace
+; ============================================================================
+GLOBAL DEFFCT REAL MATRIX3_TRACE (M: IN)
+   DECL MATRIX3_T M
+   RETURN M.M00 + M.M11 + M.M22
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_DETERMINANT
+; Description: Computes the determinant of a 3x3 matrix using Sarrus' rule
+;              (cofactor expansion along the first row)
+;              det = M00*(M11*M22 - M12*M21) - M01*(M10*M22 - M12*M20)
+;                  + M02*(M10*M21 - M11*M20)
+; Parameters:
+;   M (IN) - Matrix from which to compute the determinant
+; Returns: REAL containing the matrix determinant
+; ============================================================================
+GLOBAL DEFFCT REAL MATRIX3_DETERMINANT (M: IN)
+   DECL MATRIX3_T M
+   RETURN M.M00 * (M.M11 * M.M22 - M.M12 * M.M21) - M.M01 * (M.M10 * M.M22 - M.M12 * M.M20) + M.M02 * (M.M10 * M.M21 - M.M11 * M.M20)
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_TRANSPOSE
+; Description: Computes the matrix transpose (swaps rows and columns)
+;              T[i][j] = M[j][i]
+; Parameters:
+;   M (IN) - Matrix to transpose
+; Returns: MATRIX3_T transpose of M
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T MATRIX3_TRANSPOSE (M: IN)
+   DECL MATRIX3_T M, RES
+
+   ; Diagonal elements remain the same
+   RES.M00 = M.M00
+   RES.M11 = M.M11
+   RES.M22 = M.M22
+
+   ; Swap elements symmetric with respect to the diagonal
+   RES.M01 = M.M10
+   RES.M02 = M.M20
+   RES.M10 = M.M01
+   RES.M12 = M.M21
+   RES.M20 = M.M02
+   RES.M21 = M.M12
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_COFACTOR
+; Description: Computes the cofactor matrix of a 3x3 matrix
+;              Each cofactor C[i][j] = (-1)^(i+j) * det(minor submatrix)
+;              The minor submatrix is obtained by removing row i and column j
+; Parameters:
+;   M (IN) - Matrix from which to compute the cofactors
+; Returns: MATRIX3_T cofactor matrix
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T MATRIX3_COFACTOR (M: IN)
+   DECL MATRIX3_T M, RES
+
+   ; Cofactors of row 0
+   RES.M00 = M.M11 * M.M22 - M.M12 * M.M21
+   RES.M01 = -(M.M10 * M.M22 - M.M12 * M.M20)
+   RES.M02 = M.M10 * M.M21 - M.M11 * M.M20
+
+   ; Cofactors of row 1
+   RES.M10 = -(M.M01 * M.M22 - M.M02 * M.M21)
+   RES.M11 = M.M00 * M.M22 - M.M02 * M.M20
+   RES.M12 = -(M.M00 * M.M21 - M.M01 * M.M20)
+
+   ; Cofactors of row 2
+   RES.M20 = M.M01 * M.M12 - M.M02 * M.M11
+   RES.M21 = -(M.M00 * M.M12 - M.M02 * M.M10)
+   RES.M22 = M.M00 * M.M11 - M.M01 * M.M10
+
+   RETURN RES
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_ADJOINT
+; Description: Computes the adjoint matrix (transpose of the cofactor matrix)
+;              Adj(M) = Cofactor(M)^T
+; Parameters:
+;   M (IN) - Matrix from which to compute the adjoint
+; Returns: MATRIX3_T adjoint matrix
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T MATRIX3_ADJOINT (M: IN)
+   DECL MATRIX3_T M
+   RETURN MATRIX3_TRANSPOSE(MATRIX3_COFACTOR(M))
+ENDFCT
+
+; ============================================================================
+; Function: MATRIX3_INVERSE
+; Description: Computes the inverse of a 3x3 matrix
+;              M^(-1) = Adj(M) / det(M)
+;              If the determinant is close to zero (singular matrix),
+;              the zero matrix is returned as an error indication
+; Parameters:
+;   M (IN) - Matrix to invert
+; Returns: MATRIX3_T inverse matrix, or zero matrix if singular
+; ============================================================================
+GLOBAL DEFFCT MATRIX3_T MATRIX3_INVERSE (M: IN)
+   DECL MATRIX3_T M, ADJ
+   DECL REAL DET
+
+   ; Compute determinant
+   DET = MATRIX3_DETERMINANT(M)
+
+   ; If the determinant is almost zero, the matrix is singular (not invertible)
+   IF ABS(DET) < EPS THEN
+      RETURN MATRIX3_ZERO()
+   ENDIF
+
+   ; Compute adjoint and divide by the determinant
+   ADJ = MATRIX3_ADJOINT(M)
+   RETURN MATRIX3_SCALE(ADJ, 1.0 / DET)
+ENDFCT
