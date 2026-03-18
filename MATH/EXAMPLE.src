@@ -35,8 +35,8 @@ DEF EXAMPLE ( )
       LIN PROJECTION
    ;ENDFOLD
 
-   ; Move to HOME[HOME_IDX] position in joint coordinates
-   PTP $AXIS_HOME[HOME_IDX]
+   ; Move to HOME[HOME_IDX] position in Cartesian coordinates
+   LIN HOME_AS_E6POS(HOME_IDX)
 END
 
 DEF DISPLAY_MSG ( MSG_TYPE: IN, CUSTOM_MSG: IN, MODULE: IN )
